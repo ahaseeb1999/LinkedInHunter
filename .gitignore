@@ -1,0 +1,8 @@
+# LinkedIn Hunter — .gitignore
+node_modules/
+dist/
+dist-exe/
+*.db
+*.db-shm
+*.db-wal
+.env
