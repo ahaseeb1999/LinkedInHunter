@@ -14,10 +14,14 @@
 const API_BASE = process.env.LH_API_BASE
   || 'https://linkedin-hunter-api.linkedinhunter.workers.dev'
 
-// Placeholder — replace with the API_HMAC_SECRET printed by
-// `npm run secrets:set` (kept here for local dev only).
+// ⚠ DO NOT commit the real secret here. The real value comes from the
+// LH_API_HMAC_SECRET env var, injected at build time by GitHub Actions
+// from a repo Secret. For LOCAL `npm run dev`, create a file called
+// `.env.local` (gitignored) with: LH_API_HMAC_SECRET=<your-secret>
+// and load it via your shell, or set the env var directly in PowerShell:
+//   $env:LH_API_HMAC_SECRET = "your-secret-here"
 const API_HMAC_SECRET = process.env.LH_API_HMAC_SECRET
-  || '3a09dbaf5cdfe70aaf1bdff341127d0efe31f61bbc36b2fdb5fe07c1fcd2c20f5dae4ce75cc0f2da20dd625376c55499'
+  || 'NOT_CONFIGURED_set_LH_API_HMAC_SECRET_env_var_or_GitHub_Secret'
 
 // How long we treat a cached token as "valid" without re-checking the server
 // (for offline tolerance). After this, we require server contact.
