@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import Sidebar from './components/Sidebar'
 import TitleBar from './components/TitleBar'
 import Notification from './components/Notification'
+import LicenseGate from './components/LicenseGate'
 import Dashboard from './pages/Dashboard'
 import Search from './pages/Search'
 import Results from './pages/Results'
@@ -73,23 +74,25 @@ export default function App() {
   if (!IS_ELECTRON) return <BrowserWarning />
 
   return (
-    <div className="app-shell">
-      <TitleBar />
-      <div className="main-layout">
-        <Sidebar />
-        <main className="page-content">
-          <Routes>
-            <Route path="/"          element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/search"    element={<Search />} />
-            <Route path="/results"   element={<Results />} />
-            <Route path="/saved"     element={<SavedJobs />} />
-            <Route path="/accounts"  element={<Accounts />} />
-            <Route path="/settings"  element={<Settings />} />
-          </Routes>
-        </main>
+    <LicenseGate>
+      <div className="app-shell">
+        <TitleBar />
+        <div className="main-layout">
+          <Sidebar />
+          <main className="page-content">
+            <Routes>
+              <Route path="/"          element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/search"    element={<Search />} />
+              <Route path="/results"   element={<Results />} />
+              <Route path="/saved"     element={<SavedJobs />} />
+              <Route path="/accounts"  element={<Accounts />} />
+              <Route path="/settings"  element={<Settings />} />
+            </Routes>
+          </main>
+        </div>
+        <Notification />
       </div>
-      <Notification />
-    </div>
+    </LicenseGate>
   )
 }

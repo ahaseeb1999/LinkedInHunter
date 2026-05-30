@@ -81,6 +81,20 @@ contextBridge.exposeInMainWorld('linkedinAPI', {
     diagnostics: () => ipcRenderer.invoke('db:diagnostics'),
   },
 
+  // License
+  license: {
+    getState:    ()           => ipcRenderer.invoke('license:state'),
+    checkNow:    ()           => ipcRenderer.invoke('license:check'),
+    activate:    (key)        => ipcRenderer.invoke('license:activate', { key }),
+    startTrial:  ()           => ipcRenderer.invoke('license:trial'),
+    deactivate:  ()           => ipcRenderer.invoke('license:deactivate'),
+    onStateChange: (cb) => {
+      const handler = (_, state) => cb(state)
+      ipcRenderer.on('license:state', handler)
+      return () => ipcRenderer.removeListener('license:state', handler)
+    },
+  },
+
   // Profile analyzer
   profile: {
     analyze: (params) => ipcRenderer.invoke('profile:analyze', params),

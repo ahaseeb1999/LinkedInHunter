@@ -39,6 +39,26 @@ let activeControl = null   // shared scraper control for the currently running h
 // Export
 const { exportToExcel } = require('./export/excelExporter')
 
+// License system
+const licenseMgr = require('./license/manager')
+
+// Auto-updater — checks GitHub Releases on launch, downloads silently,
+// installs on quit. Disabled in dev so editing code doesn't trigger a
+// download loop.
+let autoUpdater = null
+if (!isDev) {
+  try {
+    ;({ autoUpdater } = require('electron-updater'))
+    autoUpdater.autoDownload = true
+    autoUpdater.autoInstallOnAppQuit = true
+    autoUpdater.on('update-available',  (info) => console.log('[updater] update available:', info?.version))
+    autoUpdater.on('update-downloaded', (info) => console.log('[updater] downloaded, will install on quit:', info?.version))
+    autoUpdater.on('error',             (e)    => console.warn('[updater] error:', e?.message))
+  } catch (e) {
+    console.warn('[updater] disabled (electron-updater not loadable):', e.message)
+  }
+}
+
 let mainWindow
 let tray
 
@@ -99,6 +119,13 @@ function createTray() {
 //  APP LIFECYCLE
 // ─────────────────────────────────────────────
 app.whenReady().then(async () => {
+  // Kick off the license check in the background — the renderer subscribes to
+  // state changes via IPC and renders the LicenseGate based on the result.
+  licenseMgr.init().catch(e => console.error('[license] init error:', e))
+  licenseMgr.subscribe((state) => {
+    try { mainWindow?.webContents?.send('license:state', state) } catch (_) {}
+  })
+
   try {
     await initDB()
     console.log('✅ Database initialized')
@@ -118,10 +145,37 @@ app.whenReady().then(async () => {
   }
   createWindow()
   createTray()
+
+  // Check for app updates 30s after launch — non-blocking, fully silent.
+  // If a newer version is on GitHub Releases, it downloads in the background
+  // and installs on next quit.
+  if (autoUpdater) {
+    setTimeout(() => {
+      autoUpdater.checkForUpdatesAndNotify().catch(() => {})
+    }, 30_000)
+  }
 })
 
 // Expose diagnostic to renderer for debug/recovery UI
 ipcMain.handle('db:diagnostics', () => dbDiagnostics())
+
+// ─────────────────────────────────────────────
+//  LICENSE IPC
+// ─────────────────────────────────────────────
+ipcMain.handle('license:state', () => licenseMgr.getState())
+ipcMain.handle('license:check', async () => { await licenseMgr.checkOnce(); return licenseMgr.getState() })
+ipcMain.handle('license:activate', async (_e, { key }) => {
+  const res = await licenseMgr.activateKey(key)
+  return { ...res, state: licenseMgr.getState() }
+})
+ipcMain.handle('license:trial', async () => {
+  const res = await licenseMgr.startTrial()
+  return { ...res, state: licenseMgr.getState() }
+})
+ipcMain.handle('license:deactivate', async () => {
+  await licenseMgr.deactivate()
+  return licenseMgr.getState()
+})
 
 // Make sure any in-flight scrape is aborted and the DB lock is released cleanly
 app.on('before-quit', () => {
@@ -197,6 +251,18 @@ ipcMain.handle('accounts:checkSession', async (event, accountId) => {
 // ─────────────────────────────────────────────
 ipcMain.handle('search:run', async (event, params) => {
   const { accountId, keywords, source, filters, options } = params
+
+  // ─── License gate ────────────────────────────────────────────────
+  // Reject the hunt unless the local license state is usable AND the server
+  // issues a per-action token. This means a cracker bypassing the local
+  // check still can't run hunts — server's action-token call validates them.
+  if (!licenseMgr.isUsableLocally()) {
+    return { success: false, error: 'license_required', error_detail: 'Activate or start trial to use this feature.' }
+  }
+  const actionRes = await licenseMgr.getActionToken('hunt_start').catch(() => null)
+  if (!actionRes?.ok) {
+    return { success: false, error: 'license_check_failed', error_detail: actionRes?.error || 'unknown' }
+  }
 
   const account = accountsDB.getAccount(accountId)
   if (!account) return { success: false, error: 'Account not found' }
