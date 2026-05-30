@@ -1,8 +1,46 @@
 # LinkedIn Hunter — .gitignore
+
+# ── Dependencies & build output ──────────────────────────────
 node_modules/
 dist/
 dist-exe/
+
+# ── Databases & local state (NEVER commit) ───────────────────
 *.db
 *.db-shm
 *.db-wal
+*.db.lock/
+*.db.lock
+data/
+hunt-state.json
+
+# ── Local debug dumps (HTML/screenshots from scraper) ────────
+debug/
+**/debug/
+*.png.tmp
+*.html.tmp
+
+# ── Secrets / env files ──────────────────────────────────────
 .env
+.env.local
+.env.*.local
+*.secret
+
+# ── Cloudflare Wrangler local state (contains local D1 copy) ─
+.wrangler/
+**/.wrangler/
+
+# ── Playwright browsers (downloaded separately by users) ─────
+.cache/
+playwright-report/
+
+# ── OS / editor noise ────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+.vscode/
+.idea/
+
+# ── Backup folder is fine to commit (intentional snapshots) ─
+# !backups/

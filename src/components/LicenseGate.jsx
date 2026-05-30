@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import SocialLinks from './SocialLinks'
 
 /**
  * LicenseGate — wraps the entire app. Until the license state is `licensed`
@@ -141,6 +142,9 @@ export default function LicenseGate({ children }) {
             </button>
           </>
         )}
+
+        {/* Author credits — always visible on the gate */}
+        <SocialLinks variant="minimal" />
       </div>
     </div>
   )

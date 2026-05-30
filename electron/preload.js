@@ -81,6 +81,11 @@ contextBridge.exposeInMainWorld('linkedinAPI', {
     diagnostics: () => ipcRenderer.invoke('db:diagnostics'),
   },
 
+  // Open URL in user's default browser
+  shell: {
+    openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  },
+
   // License
   license: {
     getState:    ()           => ipcRenderer.invoke('license:state'),

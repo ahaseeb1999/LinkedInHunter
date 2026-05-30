@@ -159,6 +159,19 @@ app.whenReady().then(async () => {
 // Expose diagnostic to renderer for debug/recovery UI
 ipcMain.handle('db:diagnostics', () => dbDiagnostics())
 
+// Open external URLs in the user's default browser / mail client.
+// Whitelist: http, https, mailto. Anything else (file://, javascript:, etc.) blocked.
+ipcMain.handle('shell:openExternal', async (_e, url) => {
+  try {
+    if (typeof url !== 'string') return { ok: false, error: 'bad_url' }
+    if (!/^(https?:\/\/|mailto:)/i.test(url)) return { ok: false, error: 'unsafe_scheme' }
+    await shell.openExternal(url)
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+})
+
 // ─────────────────────────────────────────────
 //  LICENSE IPC
 // ─────────────────────────────────────────────

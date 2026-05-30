@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import useStore from '../store/useStore'
+import SocialLinks from '../components/SocialLinks'
 
 export default function Settings() {
   const { settings, loadSettings, saveSettings, showNotification } = useStore()
@@ -246,9 +247,9 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* About */}
+        {/* About + author links */}
         <div className="card" style={{ padding: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
             <div style={{
               width: 42, height: 42, borderRadius: 10,
               background: 'var(--accent)', display: 'flex', alignItems: 'center',
@@ -260,6 +261,7 @@ export default function Settings() {
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Windows · Electron + React + Playwright + SQLite</div>
             </div>
           </div>
+          <SocialLinks variant="card" />
         </div>
 
       </div>
