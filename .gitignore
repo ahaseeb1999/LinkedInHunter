@@ -44,3 +44,10 @@ Thumbs.db
 
 # ── Backup folder is fine to commit (intentional snapshots) ─
 # !backups/
+
+# ── Private docs kept on disk but not in the public repo ─────
+implementation.md
+RELEASING.md
+admin-panel/README.md
+license-server/README.md
+backups/post-feature-v1-2026-05-24/README.md
