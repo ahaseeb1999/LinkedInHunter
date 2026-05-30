@@ -1,0 +1,42 @@
+name: Release
+
+# Triggered when you push a tag like v1.0.0, v1.0.1, etc.
+# Also can be run manually from the Actions tab.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to publish releases
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
+      - name: Build + obfuscate + package + publish
+        env:
+          # Injects the HMAC secret from GitHub Secrets so the app's constants.js
+          # picks it up via process.env (the LH_API_HMAC_SECRET fallback).
+          LH_API_HMAC_SECRET: ${{ secrets.LH_API_HMAC_SECRET }}
+          LH_API_BASE: ${{ secrets.LH_API_BASE || 'https://linkedin-hunter-api.linkedinhunter.workers.dev' }}
+          # GitHub token for electron-builder to upload releases.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run release

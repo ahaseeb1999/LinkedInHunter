@@ -9,13 +9,16 @@
     "dev:vite": "vite",
     "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
     "build": "vite build",
-    "package": "npm run build && electron-builder --win",
-    "package:portable": "npm run build && electron-builder --win portable"
+    "obfuscate": "node scripts/obfuscate.js",
+    "package": "npm run build && npm run obfuscate && electron-builder --win",
+    "package:portable": "npm run build && npm run obfuscate && electron-builder --win portable",
+    "release": "npm run build && npm run obfuscate && electron-builder --win --publish always"
   },
   "dependencies": {
-    "node-sqlite3-wasm": "^0.8.12",
+    "electron-updater": "^6.2.1",
     "exceljs": "^4.4.0",
     "node-cron": "^3.0.3",
+    "node-sqlite3-wasm": "^0.8.12",
     "playwright": "^1.44.0",
     "zustand": "^4.5.2"
   },
@@ -25,6 +28,7 @@
     "cross-env": "^7.0.3",
     "electron": "^31.0.0",
     "electron-builder": "^24.13.3",
+    "javascript-obfuscator": "^4.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.23.1",
@@ -44,15 +48,25 @@
       "node_modules/**/*",
       "package.json"
     ],
+    "asar": true,
+    "publish": {
+      "provider": "github",
+      "owner": "ahaseeb1999",
+      "repo": "LinkedInHunter"
+    },
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
-      ]
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "artifactName": "LinkedInHunter-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "LinkedIn Hunter"
     }
   }
 }

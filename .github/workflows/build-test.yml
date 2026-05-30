@@ -1,0 +1,39 @@
+name: Build Test
+
+# Manual trigger only — builds the installer WITHOUT publishing to Releases.
+# Useful when you want to test the pipeline before tagging a real release.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
+      - name: Build + obfuscate + package (no publish)
+        env:
+          LH_API_HMAC_SECRET: ${{ secrets.LH_API_HMAC_SECRET }}
+          LH_API_BASE: ${{ secrets.LH_API_BASE || 'https://linkedin-hunter-api.linkedinhunter.workers.dev' }}
+        run: npm run package
+
+      - name: Upload installer as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LinkedInHunter-installer
+          path: dist-exe/*.exe
+          retention-days: 7
