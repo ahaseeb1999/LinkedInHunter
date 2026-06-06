@@ -22,6 +22,7 @@
  */
 const fs = require('fs')
 const path = require('path')
+const crypto = require('crypto')
 
 const PLACEHOLDER = 'NOT_CONFIGURED_set_LH_API_HMAC_SECRET_env_var_or_GitHub_Secret'
 const CONSTANTS = path.join(__dirname, '..', 'electron', 'license', 'constants.js')
@@ -50,4 +51,10 @@ if (!src.includes(PLACEHOLDER)) {
 
 src = src.split(PLACEHOLDER).join(secret)
 fs.writeFileSync(CONSTANTS, src)
-console.log('✓ inject-secret: baked API_HMAC_SECRET into constants.js')
+
+// Print a NON-secret fingerprint so the build log can be verified against the
+// expected value without ever exposing the secret. (A sha256 prefix + length
+// can't be reversed.) Compare these in the Actions log to confirm the right
+// secret was baked.
+const fp = crypto.createHash('sha256').update(secret).digest('hex').slice(0, 16)
+console.log(`✓ inject-secret: baked API_HMAC_SECRET (length=${secret.length}, sha256=${fp})`)
