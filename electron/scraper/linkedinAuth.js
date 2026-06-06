@@ -1,5 +1,54 @@
 const { chromium } = require('playwright')
+const fs = require('fs')
+const path = require('path')
 const { humanDelay } = require('./humanizer')
+
+// Resolve the bundled Chromium executable that ships inside the installer at
+// resources/pw-browsers (electron-builder extraResources). We pass this path
+// straight to chromium.launch() so we never depend on PLAYWRIGHT_BROWSERS_PATH
+// resolution timing — the #1 cause of "Executable doesn't exist …ms-playwright…"
+// on packaged builds. In dev, returns undefined so Playwright uses the browser
+// installed by `npx playwright install`.
+function resolveChromeExecutable() {
+  if (process.env.NODE_ENV === 'development') return undefined
+  const base = process.env.PLAYWRIGHT_BROWSERS_PATH
+    || (process.resourcesPath ? path.join(process.resourcesPath, 'pw-browsers') : null)
+  if (!base) return undefined
+  try {
+    const dirs = fs.readdirSync(base)
+    // Prefer the headed Chromium build (not the headless shell).
+    const chromiumDir = dirs.find(d => /^chromium-\d+$/.test(d))
+      || dirs.find(d => d.startsWith('chromium-') && !d.includes('headless'))
+    if (chromiumDir) {
+      const exe = path.join(base, chromiumDir, 'chrome-win64', 'chrome.exe')
+      if (fs.existsSync(exe)) return exe
+    }
+    // Fallback: search a few levels deep for chrome.exe.
+    const found = findFileShallow(base, 'chrome.exe', 4)
+    if (found) return found
+    console.warn('[login] bundled Chromium not found under', base)
+  } catch (e) {
+    console.warn('[login] could not resolve bundled Chromium:', e.message)
+  }
+  return undefined
+}
+
+function findFileShallow(dir, name, depth) {
+  if (depth < 0) return null
+  let entries = []
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch (_) { return null }
+  for (const e of entries) {
+    const p = path.join(dir, e.name)
+    if (e.isFile() && e.name.toLowerCase() === name.toLowerCase()) return p
+  }
+  for (const e of entries) {
+    if (e.isDirectory()) {
+      const r = findFileShallow(path.join(dir, e.name), name, depth - 1)
+      if (r) return r
+    }
+  }
+  return null
+}
 
 const LINKEDIN_FEED = 'https://www.linkedin.com/feed/'
 
@@ -22,6 +71,7 @@ async function loginAccount(accountName, onProgress) {
     log('Launching browser window...')
     browser = await chromium.launch({
       headless: false,
+      executablePath: resolveChromeExecutable(),
       args: [
         '--disable-blink-features=AutomationControlled',
         '--no-sandbox',
@@ -128,6 +178,7 @@ async function loginAccount(accountName, onProgress) {
 async function createAuthenticatedContext(cookies, { headless = false } = {}) {
   const browser = await chromium.launch({
     headless,
+    executablePath: resolveChromeExecutable(),
     args: [
       '--disable-blink-features=AutomationControlled',
       '--no-sandbox',
