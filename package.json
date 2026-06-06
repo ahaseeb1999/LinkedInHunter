@@ -10,9 +10,9 @@
     "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
     "build": "vite build",
     "obfuscate": "node scripts/obfuscate.js",
-    "package": "npm run build && npm run obfuscate && electron-builder --win",
-    "package:portable": "npm run build && npm run obfuscate && electron-builder --win portable",
-    "release": "npm run build && npm run obfuscate && electron-builder --win --publish always"
+    "package": "npm run build && node scripts/inject-secret.js && npm run obfuscate && electron-builder --win",
+    "package:portable": "npm run build && node scripts/inject-secret.js && npm run obfuscate && electron-builder --win portable",
+    "release": "npm run build && node scripts/inject-secret.js && npm run obfuscate && electron-builder --win --publish always"
   },
   "dependencies": {
     "electron-updater": "^6.2.1",
@@ -52,7 +52,8 @@
     "publish": {
       "provider": "github",
       "owner": "ahaseeb1999",
-      "repo": "LinkedInHunter"
+      "repo": "LinkedInHunter",
+      "releaseType": "release"
     },
     "win": {
       "target": [
