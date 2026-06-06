@@ -28,8 +28,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright Chromium
+      - name: Install Playwright Chromium (into bundled folder)
         run: npx playwright install chromium
+        env:
+          # Install into the project's pw-browsers folder so electron-builder
+          # ships it via extraResources and the packaged app can find it.
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}\pw-browsers
 
       - name: Build + obfuscate + package + publish
         env:

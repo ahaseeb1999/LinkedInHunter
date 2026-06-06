@@ -75,6 +75,21 @@ html, body, #root {
   overflow: hidden;
 }
 
+/* When LicenseGate shows a banner (trial / offline) above the app, this column
+   shares the viewport height so the banner + app-shell together fit exactly —
+   otherwise the app-shell's 100vh + banner overflows and clips the bottom. */
+.license-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+.license-shell > .app-shell {
+  height: auto;
+  flex: 1;
+  min-height: 0;
+}
+
 .titlebar {
   height: var(--titlebar-height);
   background: rgba(10, 10, 20, 0.95);
