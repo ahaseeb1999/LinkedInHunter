@@ -30,9 +30,14 @@ debug/
 .wrangler/
 **/.wrangler/
 
-# ── Playwright browsers (downloaded separately by users) ─────
+# ── Playwright browsers ──────────────────────────────────────
 .cache/
 playwright-report/
+# Bundled-browser folder: CI fills it with Chromium at build time and
+# electron-builder ships it via extraResources. Keep the folder (.gitkeep)
+# but never commit the heavy binaries.
+pw-browsers/*
+!pw-browsers/.gitkeep
 
 # ── OS / editor noise ────────────────────────────────────────
 .DS_Store

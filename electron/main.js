@@ -8,6 +8,15 @@ const { app, BrowserWindow, ipcMain, shell, Tray, Menu, nativeImage } = require(
 const path = require('path')
 const isDev = process.env.NODE_ENV === 'development'
 
+// Point Playwright at the Chromium we bundle inside the installer
+// (resources/pw-browsers). Without this, a packaged install has NO browser and
+// login/scraping fail with "Executable doesn't exist at ...ms-playwright...".
+// Must be set before any scraper module calls chromium.launch(). In dev we
+// leave it unset so Playwright uses the browser from `npx playwright install`.
+if (!isDev) {
+  process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(process.resourcesPath, 'pw-browsers')
+}
+
 // ── Single-instance lock ─────────────────────────────────────────────
 // Prevents two copies of LinkedIn Hunter from running at once, which is the
 // #1 cause of "database is locked" errors (each instance tries to open the

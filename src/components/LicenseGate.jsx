@@ -49,21 +49,22 @@ export default function LicenseGate({ children }) {
     finally { setBusy(false) }
   }
 
-  // Active states — render the app
+  // Active states — render the app. The wrapper shares the viewport height with
+  // any banner so the banner doesn't push the app's bottom edge off-screen.
   if (state.kind === 'licensed' || state.kind === 'trial') {
     return (
-      <>
+      <div className="license-shell">
         {state.kind === 'trial' && <TrialBanner expiresAt={state.expires_at} />}
         {children}
-      </>
+      </div>
     )
   }
   if (state.kind === 'offline_grace') {
     return (
-      <>
+      <div className="license-shell">
         <OfflineBanner />
         {children}
-      </>
+      </div>
     )
   }
 
@@ -239,4 +240,5 @@ const bannerStyle = (bg, color) => ({
   background: bg, color, fontWeight: 600,
   borderBottom: '1px solid rgba(255,255,255,0.05)',
   textAlign: 'center',
+  flexShrink: 0,
 })

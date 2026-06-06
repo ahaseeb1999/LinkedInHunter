@@ -17,9 +17,40 @@ export default function Settings() {
   const [clearConfirm, setClearConfirm] = useState(false)
   const [saved, setSaved] = useState(false)
 
+  // License state — lets users activate a key any time (incl. during trial)
+  const [licState, setLicState] = useState({ kind: 'checking' })
+  const [licKey, setLicKey]     = useState('')
+  const [licBusy, setLicBusy]   = useState(false)
+  const [licErr, setLicErr]     = useState('')
+
   useEffect(() => {
     loadSettings()
   }, [])
+
+  useEffect(() => {
+    let unsub = () => {}
+    ;(async () => {
+      try {
+        setLicState(await window.linkedinAPI.license.getState())
+        unsub = window.linkedinAPI.license.onStateChange(setLicState)
+      } catch (_) {}
+    })()
+    return () => unsub?.()
+  }, [])
+
+  const activateLicense = async () => {
+    setLicBusy(true); setLicErr('')
+    try {
+      const r = await window.linkedinAPI.license.activate(licKey.trim())
+      if (r.ok) { setLicKey(''); showNotification('✅ License activated', 'success') }
+      else setLicErr(licErrorMessage(r.error))
+    } catch (e) { setLicErr(e.message) }
+    finally { setLicBusy(false) }
+  }
+
+  const licDaysLeft = licState.expires_at
+    ? Math.max(0, Math.ceil((new Date(licState.expires_at) - Date.now()) / 86400000))
+    : null
 
   useEffect(() => {
     if (Object.keys(settings).length > 0) {
@@ -76,6 +107,59 @@ export default function Settings() {
       </div>
 
       <div style={{ maxWidth: 620, display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+        {/* License */}
+        <div className="card card-glow">
+          <Section title="🔑 License" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Status:</span>
+              {licState.kind === 'licensed' && (
+                <span style={{ color: 'var(--success)', fontWeight: 600 }}>✅ Licensed{licDaysLeft != null ? ` · ${licDaysLeft} days left` : ''}</span>
+              )}
+              {licState.kind === 'trial' && (
+                <span style={{ color: 'var(--warning)', fontWeight: 600 }}>🎁 Trial{licDaysLeft != null ? ` · ${licDaysLeft} day${licDaysLeft === 1 ? '' : 's'} left` : ''}</span>
+              )}
+              {!['licensed', 'trial'].includes(licState.kind) && (
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{licState.kind === 'checking' ? 'Checking…' : 'Not licensed'}</span>
+              )}
+            </div>
+
+            {licState.kind !== 'licensed' && (
+              <>
+                <RowLabel
+                  icon="🔑"
+                  label={licState.kind === 'trial' ? 'Upgrade now with a license key' : 'Enter your license key'}
+                  desc={licState.kind === 'trial' ? "Activate any time during your trial — you won't lose trial days, and you keep access after they end." : 'Paste the key the admin sent you.'}
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    className="input"
+                    style={{ flex: 1, fontFamily: 'Cascadia Code, Consolas, monospace', letterSpacing: 1 }}
+                    placeholder="LH-XXXX-XXXX-XXXX"
+                    value={licKey}
+                    spellCheck={false}
+                    onChange={e => setLicKey(e.target.value.toUpperCase())}
+                    onKeyDown={e => { if (e.key === 'Enter' && licKey.trim() && !licBusy) activateLicense() }}
+                  />
+                  <button
+                    className="btn btn-primary"
+                    style={{ flexShrink: 0 }}
+                    disabled={licBusy || !licKey.trim()}
+                    onClick={activateLicense}
+                  >
+                    {licBusy ? 'Checking…' : 'Activate'}
+                  </button>
+                </div>
+                {licErr && (
+                  <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(255,59,48,0.1)', border: '1px solid rgba(255,59,48,0.25)', borderRadius: 8, padding: '8px 12px' }}>
+                    {licErr}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
 
         {/* Scraper Behaviour */}
         <div className="card card-glow">
@@ -257,7 +341,7 @@ export default function Settings() {
               boxShadow: '0 0 20px var(--accent-glow)',
             }}>LH</div>
             <div>
-              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>LinkedIn Hunter v1.0.0</div>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>LinkedIn Hunter v1.0.2</div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Windows · Electron + React + Playwright + SQLite</div>
             </div>
           </div>
@@ -286,4 +370,17 @@ export default function Settings() {
       )}
     </div>
   )
+}
+
+function licErrorMessage(code) {
+  return {
+    invalid_key:    'Invalid license key. Double-check the spelling.',
+    bad_key_format: 'Key format looks wrong. Should be LH-XXXX-XXXX-XXXX.',
+    revoked:        'This license was revoked by the admin.',
+    expired:        'This license has expired.',
+    seat_full:      'This key has reached its maximum number of users. Ask the admin to free a seat or use a different key.',
+    invalid_token:  'License needs to be re-activated.',
+    network:        'Network problem — check your internet connection.',
+    timeout:        'Server is slow to respond. Try again.',
+  }[code] || ('Error: ' + (code || 'unknown'))
 }
