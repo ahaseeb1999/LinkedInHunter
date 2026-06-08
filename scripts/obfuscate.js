@@ -66,6 +66,19 @@ for (const file of walk(ELECTRON_DIR)) {
   if (!file.endsWith('.js')) { continue }
   if (SKIP.has(rel)) { skipped++; continue }
 
+  // NEVER obfuscate the scraper dir. These files use page.evaluate() /
+  // addInitScript(), whose function bodies are serialized and executed INSIDE
+  // the browser page. The obfuscator's string-array decoder (e.g. _0x5c87)
+  // lives only in the Node process, so obfuscating them throws
+  // "ReferenceError: _0x... is not defined" at scrape time → 0 results.
+  // No secrets live here (the baked API secret is in license/constants.js,
+  // which is still obfuscated).
+  if (rel.split(path.sep).join('/').startsWith('scraper/')) {
+    console.log('  ⏭ skip (page.evaluate runs in browser):', rel)
+    skipped++
+    continue
+  }
+
   try {
     const src = fs.readFileSync(file, 'utf8')
     // Skip tiny files (likely shims) and stuff that's clearly minified already
