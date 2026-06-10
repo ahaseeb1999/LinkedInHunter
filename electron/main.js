@@ -4,7 +4,7 @@
 // var BEFORE 'electron' is required prevents the warning from being attached.
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true'
 
-const { app, BrowserWindow, ipcMain, shell, Tray, Menu, nativeImage } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, Tray, Menu, nativeImage, Notification } = require('electron')
 const path = require('path')
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -50,6 +50,9 @@ const { exportToExcel } = require('./export/excelExporter')
 
 // License system
 const licenseMgr = require('./license/manager')
+
+// Scheduled-search runner (node-cron)
+const scheduler = require('./scheduler')
 
 // Auto-updater — checks GitHub Releases on launch, downloads silently,
 // installs on quit. Disabled in dev so editing code doesn't trigger a
@@ -155,6 +158,19 @@ app.whenReady().then(async () => {
   createWindow()
   createTray()
 
+  // Scheduled search — re-runs the last hunt on the user's cron schedule while
+  // the app is open. Fires only when enabled in Settings and a prior hunt exists.
+  scheduler.init({
+    getSettings: () => { const { getSettings } = require('./database/db'); return getSettings() },
+    runHunt: (params) => runHuntManaged(params, (m) => console.log('[scheduled]', m)),
+    log: (m) => console.log(m),
+    notify: (title, body) => {
+      try { mainWindow?.webContents?.send('search:scheduled', { title, body }) } catch (_) {}
+      try { if (Notification.isSupported()) new Notification({ title, body }).show() } catch (_) {}
+    },
+  })
+  scheduler.apply()
+
   // Check for app updates 30s after launch — non-blocking, fully silent.
   // If a newer version is on GitHub Releases, it downloads in the background
   // and installs on next quit.
@@ -201,6 +217,7 @@ ipcMain.handle('license:deactivate', async () => {
 
 // Make sure any in-flight scrape is aborted and the DB lock is released cleanly
 app.on('before-quit', () => {
+  try { scheduler.stop() } catch (_) {}
   try { activeControl?.stop() } catch (_) {}
   try {
     const d = getDB()
@@ -271,8 +288,13 @@ ipcMain.handle('accounts:checkSession', async (event, accountId) => {
 // ─────────────────────────────────────────────
 //  SEARCH IPC
 // ─────────────────────────────────────────────
-ipcMain.handle('search:run', async (event, params) => {
-  const { accountId, keywords, source, filters, options } = params
+/**
+ * Core hunt logic — used by both the manual search:run IPC handler and the
+ * scheduled-search runner. Performs the license gate, scrapes jobs/posts for
+ * the given params, and persists results. The caller owns the `control`.
+ */
+async function runHunt(params, { onProgress = () => {}, control } = {}) {
+  const { accountId, keywords, source, filters, options } = params || {}
 
   // ─── License gate ────────────────────────────────────────────────
   // Reject the hunt unless the local license state is usable AND the server
@@ -296,22 +318,16 @@ ipcMain.handle('search:run', async (event, params) => {
     runAt: new Date().toISOString(),
   })
 
-  // Spin up a fresh control object for this run
-  activeControl = createControl()
-  const control = activeControl
-
+  const ctrl = control || createControl()
   const results = { jobs: [], posts: [], duplicates: 0 }
-  const sendProgress = (msg) => {
-    try { event.sender.send('search:progress', msg) } catch (_) {}
-  }
 
   try {
-    if ((source === 'jobs' || source === 'both') && !control.isStopped()) {
+    if ((source === 'jobs' || source === 'both') && !ctrl.isStopped()) {
       const jobs = await scrapeJobs({
         cookies: JSON.parse(account.cookies),
         keywords, filters, options,
-        control,
-        onProgress: sendProgress,
+        control: ctrl,
+        onProgress,
       })
       for (const job of jobs) {
         const { isDuplicate, id } = jobsDB.insertJob({ ...job, searchId, accountId })
@@ -320,12 +336,12 @@ ipcMain.handle('search:run', async (event, params) => {
       }
     }
 
-    if ((source === 'posts' || source === 'both') && !control.isStopped()) {
+    if ((source === 'posts' || source === 'both') && !ctrl.isStopped()) {
       const posts = await scrapePosts({
         cookies: JSON.parse(account.cookies),
         keywords, filters, options,
-        control,
-        onProgress: sendProgress,
+        control: ctrl,
+        onProgress,
       })
       for (const post of posts) {
         const { isDuplicate, id } = postsDB.insertPost({ ...post, searchId, accountId })
@@ -335,19 +351,43 @@ ipcMain.handle('search:run', async (event, params) => {
     }
 
     jobsDB.updateSearchCount(searchId, results.jobs.length + results.posts.length)
-
-    return {
-      success: true,
-      stopped: control.isStopped(),
-      results,
-      searchId,
-    }
+    return { success: true, stopped: ctrl.isStopped(), results, searchId }
   } catch (err) {
     console.error('Search error:', err)
     return { success: false, error: err.message }
+  }
+}
+
+/**
+ * Run a hunt while owning the shared `activeControl` slot. Returns
+ * { success:false, error:'busy' } if another hunt is already in flight, so a
+ * scheduled run never collides with a manual one (and vice versa).
+ */
+async function runHuntManaged(params, onProgress = () => {}) {
+  if (activeControl) return { success: false, error: 'busy' }
+  activeControl = createControl()
+  const control = activeControl
+  try {
+    return await runHunt(params, { onProgress, control })
   } finally {
     if (activeControl === control) activeControl = null
   }
+}
+
+ipcMain.handle('search:run', async (event, params) => {
+  // Remember this search so the scheduler can re-run it later.
+  try {
+    const { saveSettings } = require('./database/db')
+    saveSettings({ lastSearch: JSON.stringify({
+      accountId: params.accountId, keywords: params.keywords,
+      source: params.source, filters: params.filters, options: params.options,
+    }) })
+  } catch (_) {}
+
+  const sendProgress = (msg) => {
+    try { event.sender.send('search:progress', msg) } catch (_) {}
+  }
+  return runHuntManaged(params, sendProgress)
 })
 
 ipcMain.handle('search:stop',   () => { activeControl?.stop();   return { ok: true } })
@@ -489,6 +529,9 @@ ipcMain.handle('settings:get', async () => {
 ipcMain.handle('settings:save', async (event, settings) => {
   const { saveSettings } = require('./database/db')
   saveSettings(settings)
+  // Re-apply the cron schedule so toggling it (or editing the cron) takes
+  // effect immediately without restarting the app.
+  try { scheduler.apply() } catch (e) { console.warn('[schedule] reapply failed:', e.message) }
   return { success: true }
 })
 

@@ -24,12 +24,6 @@ const LINKS = [
     icon: '⌥',
     bg: '#24292e',
   },
-  {
-    label: 'Instagram',
-    href: 'https://www.instagram.com/ahaseeb1999',
-    icon: '◧',
-    bg: 'linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)',
-  },
 ]
 
 const openLink = (href) => {

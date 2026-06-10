@@ -281,7 +281,7 @@ export default function Settings() {
               <RowLabel
                 icon="🔁"
                 label="Enable Scheduled Searches"
-                desc="Automatically run the last search on a schedule in the background"
+                desc="Re-runs your most recent hunt automatically on the schedule below. Runs only while the app is open (it can stay minimized in the tray). Run at least one hunt first so it knows what to repeat."
               />
               <label className="toggle-switch" onClick={() => update('scheduledSearch', form.scheduledSearch === 'true' ? 'false' : 'true')}>
                 <div className={`toggle-track${form.scheduledSearch === 'true' ? ' on' : ''}`}>
@@ -341,7 +341,7 @@ export default function Settings() {
               boxShadow: '0 0 20px var(--accent-glow)',
             }}>LH</div>
             <div>
-              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>LinkedIn Hunter v1.0.5</div>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>LinkedIn Hunter v1.0.6</div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Windows · Electron + React + Playwright + SQLite</div>
             </div>
           </div>
