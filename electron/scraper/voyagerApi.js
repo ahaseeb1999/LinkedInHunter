@@ -136,8 +136,14 @@ function parseVoyagerPosts(json) {
     else if (obj.summary?.text) content = obj.summary.text
     else if (typeof obj.commentary === 'string') content = obj.commentary
 
-    // Permalink construction — try every known field, then fall back to
-    // regex over the entire object JSON
+    // Permalink construction. LinkedIn posts come as activity / ugcPost / share
+    // URNs — match all three (previously only `activity:` was matched, so
+    // ugcPost/share posts ended up with an empty post_url → no post link in UI).
+    const urnToUrl = (s) => {
+      const m = String(s || '').match(/urn:li:(activity|ugcPost|share):(\d+)/) ||
+                String(s || '').match(/\b(activity|ugcPost|share):(\d+)/)
+      return m ? `https://www.linkedin.com/feed/update/urn:li:${m[1]}:${m[2]}/` : ''
+    }
     let post_url = ''
     const allUrnSources = [
       obj.urn,
@@ -150,21 +156,18 @@ function parseVoyagerPosts(json) {
     ].filter(Boolean)
 
     for (const src of allUrnSources) {
-      const m = String(src).match(/activity:(\d+)/)
-      if (m) { post_url = `https://www.linkedin.com/feed/update/urn:li:activity:${m[1]}/`; break }
+      post_url = urnToUrl(src)
+      if (post_url) break
     }
     if (!post_url) {
+      // NOTE: actor.navigationContext.actionTarget is the AUTHOR profile, not
+      // the post — deliberately not used as the permalink here.
       if (obj.permalink) post_url = obj.permalink
-      else if (obj.navigationContext?.actionTarget) post_url = obj.navigationContext.actionTarget
       else if (obj.updateMetadata?.shareUrl) post_url = obj.updateMetadata.shareUrl
     }
-    // Final fallback: regex the whole serialized obj for activity URN
+    // Final fallback: regex the whole serialized obj for any post URN.
     if (!post_url) {
-      try {
-        const json = JSON.stringify(obj)
-        const m = json.match(/urn:li:activity:(\d+)/)
-        if (m) post_url = `https://www.linkedin.com/feed/update/urn:li:activity:${m[1]}/`
-      } catch (_) {}
+      try { post_url = urnToUrl(JSON.stringify(obj)) } catch (_) {}
     }
 
     // Harvest external URLs from any 'url' / 'navigationContext.actionTarget'

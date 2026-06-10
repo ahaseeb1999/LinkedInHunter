@@ -274,6 +274,11 @@ export default function Results() {
           {filteredPosts.map(post => {
             let links = []
             try { links = JSON.parse(post.links || '[]') } catch {}
+            // Fallback when the exact post permalink couldn't be captured:
+            // open the author's recent posts so there's always a post link.
+            const recentActivityUrl = (post.author_url && /\/in\//.test(post.author_url))
+              ? post.author_url.replace(/\/+$/, '') + '/recent-activity/all/'
+              : null
             return (
               <div key={post.id} className={`post-card${post.is_duplicate ? ' duplicate' : ''}`}>
                 <div className="post-author">
@@ -309,8 +314,9 @@ export default function Results() {
                       style={{ color: post.is_saved ? 'var(--warning)' : undefined }}>
                       {post.is_saved ? '🔖' : '☆'}
                     </button>
-                    {/* Post permalink */}
-                    {post.post_url && (
+                    {/* Post permalink — exact link if we have it, else the
+                        author's recent posts so there's always a post link. */}
+                    {post.post_url ? (
                       <>
                         <a href={post.post_url} target="_blank" rel="noreferrer"
                            className="btn btn-primary btn-sm" title={post.post_url}>
@@ -324,7 +330,22 @@ export default function Results() {
                           📋
                         </button>
                       </>
-                    )}
+                    ) : recentActivityUrl ? (
+                      <>
+                        <a href={recentActivityUrl} target="_blank" rel="noreferrer"
+                           className="btn btn-primary btn-sm"
+                           title="Exact post link unavailable — opens this author's recent posts">
+                          🔗 Author's posts →
+                        </a>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          data-tooltip="Copy link"
+                          onClick={() => copyToClipboard(recentActivityUrl, 'Author posts link')}
+                        >
+                          📋
+                        </button>
+                      </>
+                    ) : null}
                     {post.author_url && (
                       <>
                         <a href={post.author_url} target="_blank" rel="noreferrer"

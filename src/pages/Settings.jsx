@@ -341,7 +341,7 @@ export default function Settings() {
               boxShadow: '0 0 20px var(--accent-glow)',
             }}>LH</div>
             <div>
-              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>LinkedIn Hunter v1.0.6</div>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>LinkedIn Hunter v1.0.7</div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Windows · Electron + React + Playwright + SQLite</div>
             </div>
           </div>

@@ -231,14 +231,14 @@ async function extractPostCards(page) {
         let up = card
         for (let i = 0; i < 6 && up; i++) {
           const urn = up.getAttribute?.('data-urn') || up.getAttribute?.('data-id') || up.getAttribute?.('data-chameleon-result-urn') || ''
-          const m = urn.match(/activity[:_-]?(\d{4,25})/)
-          if (m) { post_url = `https://www.linkedin.com/feed/update/urn:li:activity:${m[1]}/`; break }
+          const m = urn.match(/urn:li:(activity|ugcPost|share):(\d{4,25})/) || urn.match(/(activity|ugcPost|share)[:_-]?(\d{4,25})/)
+          if (m) { post_url = `https://www.linkedin.com/feed/update/urn:li:${m[1]}:${m[2]}/`; break }
           up = up.parentElement
         }
       }
       if (!post_url) {
-        const m = (card.outerHTML || '').match(/urn:li:activity:(\d{4,25})/)
-        if (m) post_url = `https://www.linkedin.com/feed/update/urn:li:activity:${m[1]}/`
+        const m = (card.outerHTML || '').match(/urn:li:(activity|ugcPost|share):(\d{4,25})/)
+        if (m) post_url = `https://www.linkedin.com/feed/update/urn:li:${m[1]}:${m[2]}/`
       }
       // Additional fallback: any anchor href inside the card matching the
       // post-permalink pattern, even if class/structure is unusual
@@ -246,9 +246,9 @@ async function extractPostCards(page) {
         const anchors = card.querySelectorAll('a[href]')
         for (const a of anchors) {
           const h = a.getAttribute('href') || ''
-          // Match anchor with activity URN or LinkedIn post permalink
-          const m1 = h.match(/urn:li:activity:(\d{4,25})/)
-          if (m1) { post_url = `https://www.linkedin.com/feed/update/urn:li:activity:${m1[1]}/`; break }
+          // Match anchor with activity/ugcPost/share URN or LinkedIn post permalink
+          const m1 = h.match(/urn:li:(activity|ugcPost|share):(\d{4,25})/)
+          if (m1) { post_url = `https://www.linkedin.com/feed/update/urn:li:${m1[1]}:${m1[2]}/`; break }
           if (/^\/posts\/|^https?:\/\/(www\.)?linkedin\.com\/posts\//.test(h)) {
             post_url = h.startsWith('/') ? 'https://www.linkedin.com' + h : h
             break
