@@ -1,6 +1,6 @@
 {
   "name": "linkedin-hunter",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Professional LinkedIn Job & Opportunity Hunter",
   "main": "electron/main.js",
   "homepage": "./",
