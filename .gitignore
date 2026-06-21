@@ -56,3 +56,7 @@ RELEASING.md
 admin-panel/README.md
 license-server/README.md
 backups/post-feature-v1-2026-05-24/README.md
+
+# ── Local-only working folders — not part of the published app ──
+/license-server/
+/admin-panel/
