@@ -137,6 +137,14 @@ export default function Search() {
   const updateFilter = (key, val) => setFilters(f => ({ ...f, [key]: val }))
   const updateOption = (key, val) => setOptions(o => ({ ...o, [key]: val }))
 
+  // Escalating account-safety guidance for the (now custom) Max Results value.
+  const maxN = Number(options.maxResults) || 0
+  const maxWarn = maxN > 500
+    ? { c: 'var(--danger)',  bg: 'rgba(255,59,48,0.10)',  b: 'rgba(255,59,48,0.30)',  t: '⚠ Very high. Pulling this many in a single hunt sharply raises the chance LinkedIn throttles or restricts your account. Strongly increase the delay between requests (Settings → Scraper Behaviour) and consider splitting across multiple accounts.' }
+    : maxN > 200
+    ? { c: 'var(--warning)', bg: 'rgba(255,149,0,0.10)', b: 'rgba(255,149,0,0.30)', t: '⚠ Above 200 increases account risk. Raise your request delay (Settings → Scraper Behaviour) to stay on the safe side.' }
+    : { c: 'var(--text-muted)', bg: 'var(--bg-input)', b: 'var(--border)', t: '✓ Safe range. You can go higher (up to 1000), but more results = more requests = more account risk.' }
+
   const handleAnalyzeProfile = async () => {
     if (!activeAccountId) {
       showNotification('Add a LinkedIn account first', 'warning')
@@ -373,17 +381,38 @@ export default function Search() {
             </div>
           )}
 
-          {/* Max results & date range */}
-          <div className="grid-2" style={{ marginBottom: 16 }}>
+          {/* Max results (custom) & date range */}
+          <div className="grid-2" style={{ marginBottom: 10 }}>
             <div className="form-group">
-              <label className="form-label">Max Results</label>
-              <select
-                className="select"
+              <label className="form-label">Max Results <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>(custom, up to 1000)</span></label>
+              <input
+                type="number"
+                className="input"
+                min={1}
+                max={1000}
                 value={options.maxResults}
-                onChange={e => updateOption('maxResults', e.target.value)}
-              >
-                {MAX_RESULTS_OPTIONS.map(o => <option key={o} value={o}>{o} results</option>)}
-              </select>
+                placeholder="e.g. 50"
+                onChange={e => updateOption('maxResults', e.target.value.replace(/[^0-9]/g, ''))}
+                onBlur={e => {
+                  let n = parseInt(e.target.value, 10)
+                  if (!Number.isFinite(n) || n < 1) n = 25
+                  if (n > 1000) n = 1000
+                  updateOption('maxResults', String(n))
+                }}
+              />
+              <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                {MAX_RESULTS_OPTIONS.map(o => (
+                  <button
+                    key={o}
+                    type="button"
+                    className={`source-pill${String(options.maxResults) === o ? ' active' : ''}`}
+                    style={{ padding: '4px 12px', fontSize: 12 }}
+                    onClick={() => updateOption('maxResults', o)}
+                  >
+                    {o}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="form-group">
               <label className="form-label">Date Posted</label>
@@ -395,6 +424,16 @@ export default function Search() {
                 {DATE_RANGE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
+          </div>
+
+          {/* Escalating account-safety note for Max Results */}
+          <div style={{
+            display: 'flex', gap: 8, alignItems: 'flex-start',
+            marginBottom: 16, padding: '9px 12px',
+            background: maxWarn.bg, border: `1px solid ${maxWarn.b}`,
+            borderRadius: 'var(--radius-md)', fontSize: 11.5, lineHeight: 1.5, color: maxWarn.c,
+          }}>
+            <span>{maxWarn.t}</span>
           </div>
 
           {/* Date from/to */}

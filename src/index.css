@@ -4,33 +4,33 @@
    DESIGN TOKENS
 ═══════════════════════════════════════════ */
 :root {
-  --bg-base:       #07070f;
-  --bg-surface:    #0f0f1a;
-  --bg-card:       rgba(255, 255, 255, 0.04);
-  --bg-card-hover: rgba(255, 255, 255, 0.07);
+  --bg-base:       #0a0a14;
+  --bg-surface:    #12121f;
+  --bg-card:       rgba(255, 255, 255, 0.045);
+  --bg-card-hover: rgba(255, 255, 255, 0.085);
   --bg-input:      rgba(255, 255, 255, 0.06);
-  --bg-input-focus:rgba(255, 255, 255, 0.09);
+  --bg-input-focus:rgba(255, 255, 255, 0.10);
 
-  --accent:        #0077b5;
-  --accent-hover:  #0090d9;
-  --accent-glow:   rgba(0, 119, 181, 0.35);
-  --accent-soft:   rgba(0, 119, 181, 0.15);
+  --accent:        #1a8fd0;
+  --accent-hover:  #36a6e6;
+  --accent-glow:   rgba(26, 143, 208, 0.38);
+  --accent-soft:   rgba(26, 143, 208, 0.16);
 
-  --success:       #00d4aa;
-  --success-soft:  rgba(0, 212, 170, 0.15);
-  --warning:       #ff9500;
-  --warning-soft:  rgba(255, 149, 0, 0.15);
-  --danger:        #ff3b30;
-  --danger-soft:   rgba(255, 59, 48, 0.15);
-  --purple:        #a855f7;
-  --purple-soft:   rgba(168, 85, 247, 0.15);
+  --success:       #19d3a2;
+  --success-soft:  rgba(25, 211, 162, 0.16);
+  --warning:       #ffa92b;
+  --warning-soft:  rgba(255, 169, 43, 0.16);
+  --danger:        #ff4d4f;
+  --danger-soft:   rgba(255, 77, 79, 0.16);
+  --purple:        #b06bf5;
+  --purple-soft:   rgba(176, 107, 245, 0.16);
 
-  --text-primary:  #f0f0ff;
-  --text-secondary:#8888aa;
-  --text-muted:    #555577;
+  --text-primary:  #f4f4ff;
+  --text-secondary:#aeaed0;
+  --text-muted:    #7a7a99;
 
-  --border:        rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.14);
+  --border:        rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.17);
 
   --radius-sm:  6px;
   --radius-md:  10px;

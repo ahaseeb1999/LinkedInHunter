@@ -421,6 +421,7 @@ async function scrapePosts({ cookies, keywords, filters = {}, options = {}, cont
   // Shared dedup across all sources
   const globalSeen = new Set()
   const allPosts = []
+  let diagWritten = false   // one-shot post-link diagnostic per hunt
 
   const backoff = createBackoff({ baseMs: 60_000, maxMs: 600_000 })
 
@@ -469,6 +470,7 @@ async function scrapePosts({ cookies, keywords, filters = {}, options = {}, cont
           maxResults: Math.max(10, Math.floor(maxResults * 0.7)),  // ~70% of budget from Voyager
           count: 10,
           onProgress: log,
+          debugDir, slug, ts,
         }).catch(e => ({ posts: [], error: e.message }))
 
         if (result.error) log(`   ⚠ Voyager error: ${result.error}`)
@@ -500,6 +502,26 @@ async function scrapePosts({ cookies, keywords, filters = {}, options = {}, cont
           if (allPosts.length >= maxResults) break
         }
         log(`   ✓ HTML: ${allPosts.length} total after fallback`)
+      }
+
+      // DIAGNOSTIC (once): summarize how many collected posts actually have an
+      // exact post_url vs only an author link, and from which source — so we can
+      // pinpoint the missing-post-link issue from real data.
+      if (!diagWritten && debugDir && allPosts.length > beforeCount) {
+        diagWritten = true
+        try {
+          const summary = allPosts.map(p => ({
+            via: p._via, has_post_url: !!p.post_url,
+            post_url: p.post_url || '', author_url: p.author_url || '',
+            content: (p.content || '').slice(0, 60),
+          }))
+          const withLink = summary.filter(s => s.has_post_url).length
+          fs.writeFileSync(
+            path.join(debugDir, `posts_${slug}_${ts}_postlink_diag.json`),
+            JSON.stringify({ total: summary.length, with_post_url: withLink, without: summary.length - withLink, posts: summary }, null, 2)
+          )
+          log(`   🧪 Diagnostic: ${withLink}/${summary.length} posts have an exact link — details in debug folder`)
+        } catch (_) {}
       }
 
       // Step D: Hashtag (supplementary)
