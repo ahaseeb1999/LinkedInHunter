@@ -27,6 +27,9 @@
  * array. We extract Update objects (posts) and their associated actor info.
  */
 
+const fs = require('fs')
+const path = require('path')
+
 const VOYAGER_BASE = 'https://www.linkedin.com/voyager/api'
 
 /**
@@ -218,16 +221,30 @@ function parseVoyagerPosts(json) {
  * with increasing `start` until `maxResults` is hit or LinkedIn returns
  * fewer than `count` results (end of feed).
  */
-async function searchPostsViaVoyager(page, { keyword, dateRange, maxResults = 50, count = 10, onProgress }) {
+async function searchPostsViaVoyager(page, { keyword, dateRange, maxResults = 50, count = 10, onProgress, debugDir, slug, ts }) {
   const log = (m) => { try { onProgress?.(m) } catch (_) {} }
   const allPosts = []
   let start = 0
   let consecutiveEmpty = 0
+  let dumped = false
 
   while (allPosts.length < maxResults) {
     const url = buildContentSearchQuery({ keyword, dateRange, start, count })
     log(`   📡 Voyager call: start=${start} count=${count}`)
     const resp = await callVoyager(page, url)
+
+    // DIAGNOSTIC: dump the first raw response + parsed sample so we can see the
+    // exact shape LinkedIn returns and fix post_url extraction precisely.
+    if (!dumped && debugDir && resp && resp.data) {
+      dumped = true
+      try {
+        fs.writeFileSync(path.join(debugDir, `posts_${slug}_${ts}_voyager_raw.json`), JSON.stringify(resp.data, null, 2))
+        const sample = parseVoyagerPosts(resp.data).slice(0, 5)
+          .map(p => ({ author_name: p.author_name, author_url: p.author_url, post_url: p.post_url, has_post_url: !!p.post_url }))
+        fs.writeFileSync(path.join(debugDir, `posts_${slug}_${ts}_voyager_parsed.json`), JSON.stringify(sample, null, 2))
+        log(`   🧪 Diagnostic: wrote voyager_raw + voyager_parsed to debug folder`)
+      } catch (_) {}
+    }
 
     if (!resp || resp.error) {
       log(`   ⚠ Voyager error: ${resp?.error || 'unknown'}`)
