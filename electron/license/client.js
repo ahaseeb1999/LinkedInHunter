@@ -62,9 +62,16 @@ async function startTrial({ fingerprint, hostname }) {
   return call('/api/v1/trial/start', { fingerprint, hostname })
 }
 
-/** Heartbeat — am I still allowed? */
+/** Best-effort current app version, for server-side version gating. */
+function getAppVersion() {
+  try { return require('electron').app.getVersion() } catch (_) {}
+  try { return require('../../package.json').version } catch (_) {}
+  return '0.0.0'
+}
+
+/** Heartbeat — am I still allowed? (also carries version for update gating) */
 async function check({ token, fingerprint }) {
-  return call('/api/v1/check', { token, fingerprint })
+  return call('/api/v1/check', { token, fingerprint, version: getAppVersion() })
 }
 
 /** Get a short-lived permission token for a specific sensitive action. */

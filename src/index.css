@@ -42,8 +42,44 @@
 
   --sidebar-width: 230px;
   --titlebar-height: 40px;
+  --titlebar-bg: rgba(10, 10, 20, 0.95);
 
   --transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Light theme (toggled via Settings → Appearance) ── */
+:root[data-theme="light"] {
+  --bg-base:       #eef1f6;
+  --bg-surface:    #ffffff;
+  --bg-card:       #ffffff;
+  --bg-card-hover: #f3f5fa;
+  --bg-input:      #f1f3f8;
+  --bg-input-focus:#e7ebf3;
+
+  --accent:        #0a66c2;
+  --accent-hover:  #0b5cab;
+  --accent-glow:   rgba(10, 102, 194, 0.20);
+  --accent-soft:   rgba(10, 102, 194, 0.10);
+
+  --success:       #0a7d62;
+  --success-soft:  rgba(10, 125, 98, 0.12);
+  --warning:       #b26a00;
+  --warning-soft:  rgba(178, 106, 0, 0.12);
+  --danger:        #c62b2b;
+  --danger-soft:   rgba(198, 43, 43, 0.10);
+  --purple:        #7c3aed;
+  --purple-soft:   rgba(124, 58, 237, 0.10);
+
+  --text-primary:  #16161d;
+  --text-secondary:#444459;
+  --text-muted:    #6b6b85;
+
+  --border:        rgba(0, 0, 0, 0.12);
+  --border-strong: rgba(0, 0, 0, 0.20);
+
+  --titlebar-bg:   #ffffff;
+  --shadow-card:   0 4px 20px rgba(20, 30, 60, 0.10);
+  --shadow-glow:   0 0 24px var(--accent-glow);
 }
 
 /* ═══════════════════════════════════════════
@@ -92,7 +128,7 @@ html, body, #root {
 
 .titlebar {
   height: var(--titlebar-height);
-  background: rgba(10, 10, 20, 0.95);
+  background: var(--titlebar-bg);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;

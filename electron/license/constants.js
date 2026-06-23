@@ -23,9 +23,10 @@ const API_BASE = process.env.LH_API_BASE
 const API_HMAC_SECRET = process.env.LH_API_HMAC_SECRET
   || 'NOT_CONFIGURED_set_LH_API_HMAC_SECRET_env_var_or_GitHub_Secret'
 
-// How long we treat a cached token as "valid" without re-checking the server
-// (for offline tolerance). After this, we require server contact.
-const OFFLINE_GRACE_HOURS = 24
+// How long we treat a cached token as "valid" with FULL access while the server
+// is unreachable. After this we don't lock the user out — we drop to read-only
+// (data stays, hunting pauses) and auto-restore once the server is reachable.
+const OFFLINE_GRACE_HOURS = 72
 
 // Heartbeat interval — how often we silently re-check with the server while
 // the app is running.

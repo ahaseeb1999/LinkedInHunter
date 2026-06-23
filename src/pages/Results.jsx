@@ -16,6 +16,7 @@ export default function Results() {
   const [sortField, setSortField]     = useState('date_posted')
   const [sortDir, setSortDir]         = useState('desc')
   const [selected, setSelected]       = useState([])
+  const [hideDupes, setHideDupes]     = useState(true)
   const [exporting, setExporting]     = useState(false)
   const [editNotes, setEditNotes]     = useState('')
   const [notesJobId, setNotesJobId]   = useState(null)
@@ -27,6 +28,7 @@ export default function Results() {
 
   const filteredJobs = jobs
     .filter(j => {
+      if (hideDupes && j.is_duplicate) return false
       if (keyword && !`${j.title} ${j.company} ${j.description}`.toLowerCase().includes(keyword.toLowerCase())) return false
       if (statusFilter !== 'All' && j.status !== statusFilter) return false
       return true
@@ -38,6 +40,7 @@ export default function Results() {
 
   const filteredPosts = posts
     .filter(p => {
+      if (hideDupes && p.is_duplicate) return false
       if (keyword && !`${p.author_name} ${p.content}`.toLowerCase().includes(keyword.toLowerCase())) return false
       return true
     })
@@ -137,6 +140,13 @@ export default function Results() {
           ))}
         </select>
         <button className="btn btn-ghost btn-sm" onClick={selectAll}>Select All</button>
+        <button
+          className={`btn btn-sm ${hideDupes ? 'btn-secondary' : 'btn-ghost'}`}
+          onClick={() => setHideDupes(v => !v)}
+          title="Hide entries already found in earlier hunts"
+        >
+          {hideDupes ? '✓ Hiding duplicates' : 'Show duplicates'}
+        </button>
         <button className="btn btn-ghost btn-sm" onClick={() => { loadJobs({ accountId: activeAccountId }); loadPosts({ accountId: activeAccountId }) }}>↻ Reload</button>
       </div>
 

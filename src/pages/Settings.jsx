@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import useStore from '../store/useStore'
 import SocialLinks from '../components/SocialLinks'
+import { getTheme, setTheme } from '../theme'
 
 export default function Settings() {
   const { settings, loadSettings, saveSettings, showNotification } = useStore()
@@ -16,6 +17,9 @@ export default function Settings() {
   const [clearing, setClearing] = useState(false)
   const [clearConfirm, setClearConfirm] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [theme, setThemeState] = useState(getTheme())
+
+  const chooseTheme = (t) => { setThemeState(setTheme(t)) }
 
   // License state — lets users activate a key any time (incl. during trial)
   const [licState, setLicState] = useState({ kind: 'checking' })
@@ -158,6 +162,33 @@ export default function Settings() {
                 )}
               </>
             )}
+          </div>
+        </div>
+
+        {/* Appearance */}
+        <div className="card">
+          <Section title="🎨 Appearance" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <RowLabel
+              icon="🌗"
+              label="Theme"
+              desc="Switch between dark and light. Applies instantly and is remembered next time."
+            />
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              {[
+                { val: 'dark',  label: '🌙 Dark' },
+                { val: 'light', label: '☀️ Light' },
+              ].map(opt => (
+                <button
+                  key={opt.val}
+                  className={`source-pill${theme === opt.val ? ' active' : ''}`}
+                  style={{ padding: '6px 16px', fontSize: 13 }}
+                  onClick={() => chooseTheme(opt.val)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -341,7 +372,7 @@ export default function Settings() {
               boxShadow: '0 0 20px var(--accent-glow)',
             }}>LH</div>
             <div>
-              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>LinkedIn Hunter v1.0.8</div>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>LinkedIn Hunter v1.1.0</div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Windows · Electron + React + Playwright + SQLite</div>
             </div>
           </div>

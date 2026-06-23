@@ -261,6 +261,9 @@ ipcMain.handle('accounts:getAll', async () => {
 })
 
 ipcMain.handle('accounts:add', async (event, { name }) => {
+  if (!licenseMgr.isUsableLocally()) {
+    return { success: false, error: 'license_required', error_detail: 'Your license needs renewing before you can add an account.' }
+  }
   const sendProgress = (msg) => {
     try { event.sender.send('accounts:loginProgress', msg) } catch (_) {}
   }
@@ -403,6 +406,9 @@ ipcMain.handle('search:status', () => ({
 //  PROFILE ANALYZER IPC
 // ─────────────────────────────────────────────
 ipcMain.handle('profile:analyze', async (event, { accountId, profileUrl }) => {
+  if (!licenseMgr.isUsableLocally()) {
+    return { success: false, error: 'license_required', error_detail: 'Your license needs renewing to use this feature.' }
+  }
   const account = accountsDB.getAccount(accountId)
   if (!account) return { success: false, error: 'Account not found' }
 
