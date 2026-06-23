@@ -77,49 +77,73 @@ async function checkOnce() {
   const fp = getDeviceFingerprint()
   const r = await client.check({ token: saved.token, fingerprint: fp })
 
-  // Network or server error → fall back to grace logic
+  // Once a device has a saved token we NEVER wipe it on a transient/ambiguous
+  // problem and we NEVER hard-lock the user out of their already-collected data.
+  // Instead we drop to `read_only`: the app stays open (Results/Saved/Dashboard/
+  // Export work), but hunting/search is disabled until the issue clears. The next
+  // successful check auto-restores `licensed`/`trial` with no re-entry of the key.
+  const degrade = (reason) => setState({
+    kind: 'read_only', reason,
+    kind_of_token: saved.kind, prefix: saved.prefix || null,
+    expires_at: saved.expires_at || null,
+  })
+
+  // Kill switch first — it's a 503, so it must be checked BEFORE the generic
+  // 5xx/network branch below (otherwise it gets swallowed into offline_grace).
+  if (r && r._status === 503 && r.error === 'kill_switch_active') {
+    setState({ kind: 'kill_switch' })
+    return
+  }
+
+  // Network or server error → grace window first, then read-only (not lockout)
   if (!r || r.error === 'network' || r.error === 'timeout' || r._status >= 500) {
     if (isWithinGrace(saved.last_check_at || saved.activated_at)) {
-      setState({ kind: 'offline_grace', kind_of_token: saved.kind, prefix: saved.prefix })
+      setState({ kind: 'offline_grace', kind_of_token: saved.kind, prefix: saved.prefix, expires_at: saved.expires_at || null })
     } else {
-      setState({ kind: 'offline_dead' })
+      degrade('offline')
     }
     return
   }
 
-  if (r._status === 503 && r.error === 'kill_switch_active') {
-    setState({ kind: 'kill_switch' })
+  // Version gate: app too old → force update (blocks use until they update).
+  if (r.error === 'update_required' || r._status === 426) {
+    setState({ kind: 'update_required', latest_version: r.latest_version || null })
     return
   }
-  if (r.error === 'revoked' || r.error === 'device_booted') {
-    store.clearToken()
-    setState({ kind: 'revoked', reason: r.error })
-    return
-  }
-  if (r.error === 'trial_expired') {
-    store.clearToken()
-    setState({ kind: 'trial_expired' })
-    return
-  }
+  // Server says the license/trial is no longer valid. Keep the token + data
+  // access; show a clear banner; let them renew from Settings. (Was: wipe + lock.)
+  if (r.error === 'revoked' || r.error === 'device_booted') { degrade('revoked'); return }
+  if (r.error === 'trial_expired') { degrade('trial_expired'); return }
+  if (r.error === 'expired')      { degrade('expired'); return }   // license past expires_at (#6)
+
+  // Ambiguous token errors: a transient blip or a hardware-fingerprint shift
+  // must NOT kick a paying user back to the key screen. Degrade to read-only if
+  // we already had a token; only a truly fresh device sees needs_activation.
   if (r.error === 'invalid_token' || r.error === 'wrong_token_kind' || r.error === 'device_mismatch') {
-    store.clearToken()
-    setState({ kind: 'needs_activation', reason: r.error })
+    if (saved.token) degrade('reverify')
+    else setState({ kind: 'needs_activation', reason: r.error })
     return
   }
+
   if (r.ok && (r.kind === 'license' || r.kind === 'trial')) {
-    // Refresh last_check_at locally
-    store.saveToken({ ...saved, last_check_at: new Date().toISOString() })
+    store.saveToken({ ...saved, last_check_at: new Date().toISOString(), expires_at: r.expires_at || saved.expires_at })
     setState({
       kind: r.kind === 'trial' ? 'trial' : 'licensed',
       kind_of_token: r.kind,
       prefix: saved.prefix || null,
       expires_at: r.expires_at || saved.expires_at || null,
       seats_max: r.seats_max,
+      update_recommended: !!r.update_recommended,
+      latest_version: r.latest_version || null,
     })
     return
   }
-  // Unknown response — treat as offline
-  setState({ kind: 'offline_grace', kind_of_token: saved.kind, prefix: saved.prefix })
+  // Unknown response — keep them working within grace, else read-only
+  if (isWithinGrace(saved.last_check_at || saved.activated_at)) {
+    setState({ kind: 'offline_grace', kind_of_token: saved.kind, prefix: saved.prefix, expires_at: saved.expires_at || null })
+  } else {
+    degrade('unknown')
+  }
 }
 
 function scheduleHeartbeat() {

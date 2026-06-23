@@ -54,6 +54,7 @@ export default function LicenseGate({ children }) {
   if (state.kind === 'licensed' || state.kind === 'trial') {
     return (
       <div className="license-shell">
+        {state.update_recommended && <UpdateBanner latest={state.latest_version} />}
         {state.kind === 'trial' && <TrialBanner expiresAt={state.expires_at} />}
         {children}
       </div>
@@ -64,6 +65,43 @@ export default function LicenseGate({ children }) {
       <div className="license-shell">
         <OfflineBanner />
         {children}
+      </div>
+    )
+  }
+  // Read-only: keep the app + saved data visible, but with a banner; hunting/
+  // account-add is blocked at the IPC layer. The user is NEVER bounced back to
+  // the key screen here — they renew from Settings → License and it auto-restores.
+  if (state.kind === 'read_only') {
+    return (
+      <div className="license-shell">
+        <ReadOnlyBanner reason={state.reason} />
+        {children}
+      </div>
+    )
+  }
+
+  // Forced update — app is below the required minimum version.
+  if (state.kind === 'update_required') {
+    return (
+      <div style={overlayStyle}>
+        <div style={cardStyle}>
+          <div style={logoStyle}>LH</div>
+          <h1 style={titleStyle}>Update required</h1>
+          <div style={subStyle}>
+            A newer version{state.latest_version ? ` (v${state.latest_version})` : ''} is required to keep using LinkedIn Hunter.
+            It downloads automatically in the background.
+          </div>
+          <div style={{ ...subStyle, fontSize: 12, color: '#a0a0c0' }}>
+            Please <strong>close and reopen</strong> the app to finish updating.
+          </div>
+          <button onClick={() => window.linkedinAPI?.window?.close?.()} style={primaryBtnStyle}>
+            Close &amp; update now
+          </button>
+          <button onClick={() => window.linkedinAPI.license.checkNow()} style={secondaryBtnStyle}>
+            I've updated — re-check
+          </button>
+          <SocialLinks variant="minimal" />
+        </div>
       </div>
     )
   }
@@ -165,7 +203,31 @@ function TrialBanner({ expiresAt }) {
 function OfflineBanner() {
   return (
     <div style={bannerStyle('rgba(255,149,0,0.12)', 'var(--warning)')}>
-      ⚠ License server unreachable — running on cached check. App will keep working for 24h after the last successful check.
+      ⚠ License server unreachable — running on the last successful check. Full access continues for a few days offline.
+    </div>
+  )
+}
+
+function UpdateBanner({ latest }) {
+  return (
+    <div style={bannerStyle('rgba(0,119,181,0.16)', 'var(--accent-hover)')}>
+      ⬆ A new version{latest ? ` (v${latest})` : ''} is available — please update soon. It installs automatically when you close and reopen the app.
+    </div>
+  )
+}
+
+function ReadOnlyBanner({ reason }) {
+  const msg = {
+    offline:       "⚠ Can't reach the license server — running read-only. Your saved results stay available; hunting resumes automatically once you're back online.",
+    revoked:       "🚫 This license was revoked. You can still view existing results — enter a new key in Settings → 🔑 License to hunt again.",
+    trial_expired: "⏰ Your 3-day trial ended. Existing results stay available — add a license key in Settings → 🔑 License to keep hunting.",
+    expired:       "⏰ Your license expired. Existing results stay available — renew in Settings → 🔑 License to keep hunting.",
+    reverify:      "⚠ Couldn't verify your license right now — running read-only. It restores automatically; if it persists, re-enter your key in Settings → 🔑 License.",
+    unknown:       "⚠ License check unavailable — running read-only. Hunting resumes once verification succeeds.",
+  }[reason] || "⚠ Read-only mode — hunting is paused until your license is verified. Existing results stay available."
+  return (
+    <div style={bannerStyle('rgba(255,149,0,0.14)', 'var(--warning)')}>
+      {msg}
     </div>
   )
 }
